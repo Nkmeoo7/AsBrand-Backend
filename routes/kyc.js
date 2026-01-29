@@ -2,7 +2,7 @@ const express = require('express');
 const asyncHandler = require('express-async-handler');
 const router = express.Router();
 const UserKyc = require('../model/userKyc');
-const { authMiddleware, adminMiddleware } = require('../middleware/auth');
+const { authMiddleware, adminMiddleware } = require('../middleware/auth.middleware.js');
 
 // Submit KYC
 router.post('/submit', authMiddleware, asyncHandler(async (req, res) => {

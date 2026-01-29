@@ -4,7 +4,7 @@ const router = express.Router();
 const EmiPlan = require('../model/emiPlan');
 const EmiApplication = require('../model/emiApplication');
 const UserKyc = require('../model/userKyc');
-const { authMiddleware, adminMiddleware } = require('../middleware/auth');
+const { authMiddleware, adminMiddleware } = require('../middleware/auth.middleware.js');
 
 //Emi plans staring yaha se
 
