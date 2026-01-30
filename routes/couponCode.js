@@ -1,7 +1,7 @@
 const express = require('express');
 const asyncHandler = require('express-async-handler');
 const router = express.Router();
-const Coupon = require('../model/couponCode'); 
+const Coupon = require('../model/couponCode');
 const Product = require('../model/product');
 
 // Get all coupons
@@ -56,7 +56,7 @@ router.post('/', asyncHandler(async (req, res) => {
         });
 
         const newCoupon = await coupon.save();
-        res.json({ success: true, message: "Coupon created successfully.", data: null });
+        res.json({ success: true, message: "Coupon created successfully.", data: newCoupon });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -83,7 +83,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
             return res.status(404).json({ success: false, message: "Coupon not found." });
         }
 
-        res.json({ success: true, message: "Coupon updated successfully.", data: null });
+        res.json({ success: true, message: "Coupon updated successfully.", data: updatedCoupon });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -107,7 +107,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
 
 router.post('/check-coupon', asyncHandler(async (req, res) => {
     console.log(req.body);
-    const { couponCode, productIds,purchaseAmount } = req.body;
+    const { couponCode, productIds, purchaseAmount } = req.body;
 
     try {
         // Find the coupon with the provided coupon code
@@ -130,14 +130,14 @@ router.post('/check-coupon', asyncHandler(async (req, res) => {
             return res.json({ success: false, message: "Coupon is inactive." });
         }
 
-       // Check if the purchase amount is greater than the minimum purchase amount specified in the coupon
-       if (coupon.minimumPurchaseAmount && purchaseAmount < coupon.minimumPurchaseAmount) {
-        return res.json({ success: false, message: "Minimum purchase amount not met." });
-    }
+        // Check if the purchase amount is greater than the minimum purchase amount specified in the coupon
+        if (coupon.minimumPurchaseAmount && purchaseAmount < coupon.minimumPurchaseAmount) {
+            return res.json({ success: false, message: "Minimum purchase amount not met." });
+        }
 
         // Check if the coupon is applicable for all orders
         if (!coupon.applicableCategory && !coupon.applicableSubCategory && !coupon.applicableProduct) {
-            return res.json({ success: true, message: "Coupon is applicable for all orders." ,data:coupon});
+            return res.json({ success: true, message: "Coupon is applicable for all orders.", data: coupon });
         }
 
         // Fetch the products from the database using the provided product IDs
@@ -158,7 +158,7 @@ router.post('/check-coupon', asyncHandler(async (req, res) => {
         });
 
         if (isValid) {
-            return res.json({ success: true, message: "Coupon is applicable for the provided products." ,data:coupon});
+            return res.json({ success: true, message: "Coupon is applicable for the provided products.", data: coupon });
         } else {
             return res.json({ success: false, message: "Coupon is not applicable for the provided products." });
         }

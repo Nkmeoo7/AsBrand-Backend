@@ -62,7 +62,7 @@ router.post('/', asyncHandler(async (req, res) => {
                     image: imageUrl
                 });
                 await newCategory.save();
-                res.json({ success: true, message: "Category created successfully.", data: null });
+                res.json({ success: true, message: "Category created successfully.", data: newCategory });
             } catch (error) {
                 console.error("Error creating category:", error);
                 res.status(500).json({ success: false, message: error.message });
