@@ -175,8 +175,9 @@ const placeCodOrder = async (req, res) => {
             shippingAddress,
             paymentMethod: 'cod',
             couponCode,
-            orderStatus: 'pending',
+            orderStatus: 'processing',
             paymentStatus: 'pending', // Payment on delivery
+            deliveryStatus: 'PENDING',
             orderTotal: { subtotal, discount, total }
         });
         await order.save();
