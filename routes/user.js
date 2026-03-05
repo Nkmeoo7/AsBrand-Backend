@@ -203,10 +203,17 @@ router.post('/login', validate(loginSchema), asyncHandler(async (req, res) => {
     }
   });
 }));
-// GET PROFILE - Protected route
+// GET PROFILE - Protected route (also refreshes token)
 router.get('/profile', authMiddleware, asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id).select('-password');
-  res.json({ success: true, data: user });
+  if (!user) {
+    return res.status(404).json({ success: false, message: 'User not found.' });
+  }
+  res.json({
+    success: true,
+    data: user,
+    token: generateToken(user) // fresh token with current role
+  });
 }));
 // GET ALL USERS - Admin only
 router.get('/', authMiddleware, adminMiddleware, asyncHandler(async (req, res) => {
