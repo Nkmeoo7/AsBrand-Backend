@@ -2,11 +2,21 @@ const express = require('express');
 const router = express.Router();
 const asyncHandler = require('express-async-handler');
 const multer = require('multer');
+const jwt = require('jsonwebtoken');
 const User = require('../model/user');
 const Product = require('../model/product');
 const Order = require('../model/order');
 const { authMiddleware, adminMiddleware, supplierMiddleware } = require('../middleware/auth.middleware');
 const { uploadProduct } = require('../uploadFile');
+
+// Generate a fresh JWT with updated role
+const generateToken = (user) => {
+    return jwt.sign(
+        { id: user._id, email: user.email, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+    );
+};
 
 // ============================================================
 // SUPPLIER REGISTRATION
@@ -51,6 +61,7 @@ router.post('/register', authMiddleware, asyncHandler(async (req, res) => {
         success: true,
         message: 'Application submitted! Your account is under review.',
         data: {
+            token: generateToken(user), // Fresh token with role: 'supplier'
             user: {
                 id: user._id,
                 name: user.name,
