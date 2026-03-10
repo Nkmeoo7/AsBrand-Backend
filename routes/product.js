@@ -93,9 +93,21 @@ router.get('/', asyncHandler(async (req, res) => {
             query.discountPercentage = { $gte: Number(minDiscount) };
         }
 
-        // Search by keyword
+        // Search by keyword across multiple fields
         if (keyword) {
-            query.name = { $regex: keyword, $options: 'i' };
+            const keywordRegex = { $regex: keyword, $options: 'i' };
+            query.$or = [
+                { name: keywordRegex },
+                { description: keywordRegex },
+                { tags: keywordRegex },
+                { material: keywordRegex },
+                { fit: keywordRegex },
+                { pattern: keywordRegex },
+                { occasion: keywordRegex },
+                { gender: keywordRegex },
+                { neckline: keywordRegex },
+                { sleeveLength: keywordRegex },
+            ];
         }
 
         let productsQuery = Product.find(query)
