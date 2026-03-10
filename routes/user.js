@@ -43,7 +43,7 @@ router.post('/send-otp', validate(sendOtpSchema), asyncHandler(async (req, res) 
   user.otpExpiry = otpExpiry;
   await user.save();
 
-  // Send OTP via Fast2SMS (never fail the route even if SMS fails)
+  // Send OTP via 2Factor (never fail the route even if SMS fails)
   let smsSent = false;
   try {
     smsSent = await sendOtpSms(phone, otp);
@@ -115,7 +115,8 @@ router.post('/verify-otp', validate(verifyOtpSchema), asyncHandler(async (req, r
         name: user.name,
         email: user.email,
         phone: user.phone,
-        role: user.role
+        role: user.role,
+        supplierProfile: user.supplierProfile || null
       },
       token
     }
@@ -148,7 +149,7 @@ router.post('/register', validate(registerSchema), asyncHandler(async (req, res)
   user.otpExpiry = otpExpiry;
   await user.save();
 
-  // Send OTP via Fast2SMS (never fail the route even if SMS fails)
+  // Send OTP via 2Factor (never fail the route even if SMS fails)
   let smsSent = false;
   try {
     smsSent = await sendOtpSms(phone, otp);
@@ -186,21 +187,29 @@ router.post('/login', validate(loginSchema), asyncHandler(async (req, res) => {
       message: 'Invalid email or password.'
     });
   }
-  // Generate token
-  const token = generateToken(user);
+  // Generate OTP for phone verification upon login
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+  user.otp = otp;
+  user.otpExpiry = otpExpiry;
+  await user.save();
+
+  // Send OTP via 2Factor
+  let smsSent = false;
+  try {
+    smsSent = await sendOtpSms(user.phone, otp);
+  } catch (smsErr) {
+    console.error('SMS sending failed during login, OTP saved in DB:', smsErr.message);
+  }
+
   res.json({
     success: true,
-    message: 'Login successful.',
+    message: 'Login credentials valid. Please verify your phone number with the OTP sent.',
     data: {
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role
-      },
-      token
-    }
+      phone: user.phone,
+      requiresOtpVerification: true
+    },
+    dev_otp: otp
   });
 }));
 // GET PROFILE - Protected route (also refreshes token)
