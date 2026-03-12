@@ -133,7 +133,7 @@ const productSchema = new mongoose.Schema({
         attributes: { type: Map, of: String }, // e.g {"Color": "Black", "Size": "M"}
         stock: { type: Number, default: 0 },
         price: { type: Number },
-        image: { type: String }
+        images: [{ type: String }]  // Multiple images per SKU/color
     }],
 
     // Product Details
