@@ -24,7 +24,7 @@ const generateToken = (user) => {
 // ============================================================
 
 // POST /supplier/verify-gst — Verify GST with RapidAPI
-router.post('/verify-gst', authMiddleware, asyncHandler(async (req, res) => {
+router.post('/verify-gst', asyncHandler(async (req, res) => {
     const { gstin } = req.body;
     if (!gstin) {
         return res.status(400).json({ success: false, message: 'GSTIN is required.' });
