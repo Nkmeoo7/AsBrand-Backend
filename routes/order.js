@@ -38,6 +38,7 @@ router.get('/my-orders', authMiddleware, asyncHandler(async (req, res) => {
     try {
         const orders = await Order.find({ userID: req.user.id })
             .populate('couponCode', 'id couponCode discountType discountAmount')
+            .populate('items.productID', 'name primaryImage images price offerPrice')
             .sort({ _id: -1 });
         res.json({ success: true, message: "Orders retrieved successfully.", data: orders });
     } catch (error) {
