@@ -370,6 +370,20 @@ router.post('/', asyncHandler(async (req, res) => {
 
 
 
+// Delete a product via POST (Flutter Web compatibility - DELETE method may not work through proxy)
+router.post('/:id/delete', asyncHandler(async (req, res) => {
+    const productID = req.params.id;
+    try {
+        const product = await Product.findByIdAndDelete(productID);
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found." });
+        }
+        res.json({ success: true, message: "Product deleted successfully." });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+}));
+
 // Update a product (Supports both PUT and POST for Flutter Web compatibility with FormData)
 router.use('/:id', asyncHandler(async (req, res, next) => {
     if (req.method === 'PUT' || (req.method === 'POST' && req.path.includes('/update'))) {
