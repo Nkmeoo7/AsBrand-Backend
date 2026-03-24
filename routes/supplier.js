@@ -843,6 +843,7 @@ router.get('/admin/products', asyncHandler(async (req, res) => {
         .populate('supplierId', 'name email supplierProfile.storeName')
         .populate('proCategoryId', 'name')
         .populate('proSubCategoryId', 'name')
+        .populate('proSubSubCategoryId', 'name')
         .sort({ isApproved: 1, createdAt: -1 }); // unapproved first
 
     const pending = products.filter(p => !p.isApproved);
