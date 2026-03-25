@@ -244,7 +244,7 @@ router.post('/', asyncHandler(async (req, res) => {
                 return res.json({ success: false, message: err.message || 'An error occurred during upload' });
             }
 
-            const { name, description, quantity, price, offerPrice, proCategoryId, proSubCategoryId, proSubSubCategoryId, proBrandId, proVariantTypeId, proVariantId,
+            const { name, description, quantity, price, offerPrice, supplierPrice, supplierOfferPrice, proCategoryId, proSubCategoryId, proSubSubCategoryId, proBrandId, proVariantTypeId, proVariantId,
                 proVariants, skus, imageUrls: preUploadedImageUrls,
                 weight, dimensions, stockStatus, lowStockThreshold, tags, specifications, warranty,
                 featured, emiEligible, isActive, metaTitle, metaDescription,
@@ -309,6 +309,7 @@ router.post('/', asyncHandler(async (req, res) => {
 
             const newProduct = new Product({
                 name, description, quantity, price, offerPrice,
+                supplierPrice, supplierOfferPrice,
                 proCategoryId: cleanId(proCategoryId), 
                 proSubCategoryId: cleanId(proSubCategoryId), 
                 proSubSubCategoryId: cleanId(proSubSubCategoryId), 
@@ -410,7 +411,7 @@ router.use('/:id', asyncHandler(async (req, res, next) => {
                 return res.status(500).json({ success: false, message: err.message });
             }
 
-            const { name, description, quantity, price, offerPrice, proCategoryId, proSubCategoryId, proSubSubCategoryId, proBrandId, proVariantTypeId, proVariantId,
+            const { name, description, quantity, price, offerPrice, supplierPrice, supplierOfferPrice, proCategoryId, proSubCategoryId, proSubSubCategoryId, proBrandId, proVariantTypeId, proVariantId,
                 proVariants, skus, imageUrls: preUploadedImageUrls,
                 weight, dimensions, stockStatus, lowStockThreshold, tags, specifications, warranty,
                 featured, emiEligible, isActive, metaTitle, metaDescription,
@@ -444,6 +445,8 @@ router.use('/:id', asyncHandler(async (req, res, next) => {
             productToUpdate.quantity = quantity || productToUpdate.quantity;
             productToUpdate.price = price || productToUpdate.price;
             productToUpdate.offerPrice = offerPrice || productToUpdate.offerPrice;
+            if (supplierPrice !== undefined) productToUpdate.supplierPrice = supplierPrice;
+            if (supplierOfferPrice !== undefined) productToUpdate.supplierOfferPrice = supplierOfferPrice;
             productToUpdate.proCategoryId = cleanId(proCategoryId) || productToUpdate.proCategoryId;
             productToUpdate.proSubCategoryId = cleanId(proSubCategoryId) || productToUpdate.proSubCategoryId;
             if (proSubSubCategoryId !== undefined) productToUpdate.proSubSubCategoryId = cleanId(proSubSubCategoryId);

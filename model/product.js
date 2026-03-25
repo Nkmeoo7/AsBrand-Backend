@@ -20,6 +20,12 @@ const productSchema = new mongoose.Schema({
     offerPrice: {
         type: Number
     },
+    supplierPrice: {
+        type: Number
+    },
+    supplierOfferPrice: {
+        type: Number
+    },
     discountPercentage: {
         type: Number,
         default: 0

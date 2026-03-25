@@ -868,12 +868,19 @@ router.put('/admin/products/approve/:productId', asyncHandler(async (req, res) =
         return res.status(404).json({ success: false, message: 'Product not found.' });
     }
 
+    const { price, offerPrice, supplierPrice, supplierOfferPrice } = req.body;
+
+    if (price !== undefined) product.price = Number(price);
+    if (offerPrice !== undefined) product.offerPrice = Number(offerPrice);
+    if (supplierPrice !== undefined) product.supplierPrice = Number(supplierPrice);
+    if (supplierOfferPrice !== undefined) product.supplierOfferPrice = Number(supplierOfferPrice);
+
     product.isApproved = true;
     await product.save();
 
     res.json({
         success: true,
-        message: `Product "${product.name}" has been approved.`,
+        message: `Product "${product.name}" has been approved with custom prices.`,
     });
 }));
 
