@@ -6,9 +6,22 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const User = require('../model/user');
 const Product = require('../model/product');
+const SupplierProduct = require('../model/supplierProduct');
 const Order = require('../model/order');
+const Fuse = require('fuse.js');
 const { authMiddleware, adminMiddleware, supplierMiddleware } = require('../middleware/auth.middleware');
 const { uploadProduct, uploadDocument } = require('../uploadFile');
+
+function normalizeStr(str) {
+    if (!str) return '';
+    return str.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+}
+
+function extractMetaWeight(name) {
+    if (!name) return null;
+    const match = name.match(/(\d+)\s?(g|kg|ml|l)/i);
+    return match ? match[0].toLowerCase() : null;
+}
 
 // Generate a fresh JWT with updated role
 const generateToken = (user) => {
@@ -539,9 +552,86 @@ router.get('/products', authMiddleware, supplierMiddleware, asyncHandler(async (
         .populate('proCategoryId', 'id name')
         .populate('proSubCategoryId', 'id name')
         .populate('proBrandId', 'id name')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean();
 
-    res.json({ success: true, data: products });
+    const mappedProducts = await SupplierProduct.find({ supplierId: req.user.id })
+        .populate({
+            path: 'productId',
+            populate: [
+                { path: 'proCategoryId', select: 'id name' },
+                { path: 'proSubCategoryId', select: 'id name' },
+                { path: 'proBrandId', select: 'id name' }
+            ]
+        }).lean();
+
+    const formattedMapped = mappedProducts.map(sp => {
+        if (!sp.productId) return null;
+        let base = { ...sp.productId };
+        base.supplierProductId = sp._id;
+        base.price = sp.price;
+        if (sp.offerPrice) base.offerPrice = sp.offerPrice;
+        base.quantity = sp.quantity;
+        base.stockStatus = sp.stockStatus;
+        if (sp.skus && sp.skus.length > 0) base.skus = sp.skus;
+        return base;
+    }).filter(p => p !== null);
+
+    const mergedProducts = [...products, ...formattedMapped].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({ success: true, data: mergedProducts });
+}));
+
+// POST /supplier/products/check-duplicate — Check for duplicates
+router.post('/products/check-duplicate', authMiddleware, supplierMiddleware, asyncHandler(async (req, res) => {
+    const { name, proCategoryId } = req.body;
+    if (!name || !proCategoryId) {
+        return res.status(400).json({ success: false, message: 'Name and category are required' });
+    }
+
+    const inputWeight = extractMetaWeight(name);
+    const normalizedInput = normalizeStr(name);
+
+    // Fetch existing products in this category
+    const existingProducts = await Product.find({ proCategoryId }).lean();
+
+    if (existingProducts.length === 0) {
+        return res.json({ success: true, duplicate: false });
+    }
+
+    // Add normalized names to existing products for searching
+    existingProducts.forEach(p => {
+        p.normalized_name = normalizeStr(p.name);
+    });
+
+    const fuse = new Fuse(existingProducts, {
+        keys: ["normalized_name", "brand"],
+        threshold: 0.3
+    });
+
+    const results = fuse.search(normalizedInput);
+    let matchedProduct = null;
+
+    for (let r of results) {
+        const product = r.item;
+        const productWeight = extractMetaWeight(product.name);
+        
+        // Strict weight match
+        if (inputWeight !== productWeight) continue;
+        
+        matchedProduct = product;
+        break;
+    }
+
+    if (matchedProduct) {
+        return res.json({
+            success: true,
+            duplicate: true,
+            suggestions: [matchedProduct]
+        });
+    }
+
+    res.json({ success: true, duplicate: false });
 }));
 
 // POST /supplier/products — Add a new product
@@ -557,8 +647,28 @@ router.post('/products', authMiddleware, supplierMiddleware, asyncHandler(async 
                 proVariantTypeId, proVariantId, proVariants, skus,
                 gender, material, fit, pattern, sleeveLength, neckline, occasion,
                 careInstructions, tags, specifications, weight, dimensions,
-                preUploadedUrls
+                preUploadedUrls, selected_product_id
             } = body;
+
+            // Handle SupplierProduct creation when linking an existing catalog product
+            if (selected_product_id && selected_product_id !== '' && selected_product_id !== 'null') {
+                let parsedSkus2 = skus;
+                if (typeof skus === 'string') {
+                    try { parsedSkus2 = JSON.parse(skus); } catch (e) { parsedSkus2 = []; }
+                }
+                
+                const supplierProduct = new SupplierProduct({
+                    supplierId: req.user.id,
+                    productId: selected_product_id,
+                    price: parseFloat(price),
+                    offerPrice: offerPrice ? parseFloat(offerPrice) : undefined,
+                    quantity: parseInt(quantity || 0),
+                    skus: parsedSkus2 || []
+                });
+
+                await supplierProduct.save();
+                return res.json({ success: true, message: 'Product linked successfully to your store.', data: supplierProduct });
+            }
 
             if (!name || !quantity || !price || !proCategoryId || !proSubCategoryId) {
                 return res.status(400).json({ success: false, message: 'Required fields: name, quantity, price, category, subcategory.' });
