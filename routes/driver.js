@@ -238,4 +238,108 @@ router.post('/orders/:id/proof', authMiddleware, driverMiddleware, uploadProofOf
   res.json({ success: true, message: 'Proof of delivery uploaded.', data: order });
 }));
 
+// =====================================================
+// DRIVER STATUS (authenticated driver)
+// =====================================================
+
+// PATCH /driver/status — toggle online/offline + update location
+router.patch('/status', authMiddleware, driverMiddleware, asyncHandler(async (req, res) => {
+  const { isOnline, lat, lng } = req.body;
+  const driver = await Driver.findOne({ userId: req.user.id });
+  if (!driver) {
+    return res.status(404).json({ success: false, message: 'Driver profile not found.' });
+  }
+
+  if (typeof isOnline === 'boolean') {
+    driver.isOnline = isOnline;
+  }
+  if (lat !== undefined && lng !== undefined) {
+    driver.currentLocation = { lat, lng, updatedAt: new Date() };
+  }
+  await driver.save();
+
+  res.json({ success: true, message: `Driver is now ${driver.isOnline ? 'ONLINE' : 'OFFLINE'}.`, data: driver });
+}));
+
+// =====================================================
+// ORDER ACCEPT / REJECT (authenticated driver)
+// =====================================================
+
+// POST /driver/orders/:id/accept — accept an order notification
+router.post('/orders/:id/accept', authMiddleware, driverMiddleware, asyncHandler(async (req, res) => {
+  const driver = await Driver.findOne({ userId: req.user.id });
+  if (!driver) {
+    return res.status(404).json({ success: false, message: 'Driver profile not found.' });
+  }
+
+  const order = await Order.findById(req.params.id);
+  if (!order) {
+    return res.status(404).json({ success: false, message: 'Order not found.' });
+  }
+
+  // Check if already assigned
+  if (order.assignedDriver && order.assignedDriver.toString() !== driver._id.toString()) {
+    return res.status(400).json({ success: false, message: 'Order already assigned to another driver.' });
+  }
+
+  order.assignedDriver = driver._id;
+  order.deliveryStatus = 'PICKED_UP';
+  await order.save();
+
+  res.json({ success: true, message: 'Order accepted.', data: order });
+}));
+
+// POST /driver/orders/:id/reject — reject an order notification (cascades to next driver)
+router.post('/orders/:id/reject', authMiddleware, driverMiddleware, asyncHandler(async (req, res) => {
+  // Simply acknowledge the rejection — the cascading logic will be handled
+  // by the Socket.io event system which notifies the next nearest driver
+  res.json({ success: true, message: 'Order rejected. Notifying next available driver.' });
+}));
+
+// =====================================================
+// WALLET & BANK DETAILS (authenticated driver)
+// =====================================================
+
+// GET /driver/wallet
+router.get('/wallet', authMiddleware, driverMiddleware, asyncHandler(async (req, res) => {
+  const driver = await Driver.findOne({ userId: req.user.id });
+  if (!driver) {
+    return res.status(404).json({ success: false, message: 'Driver profile not found.' });
+  }
+
+  // Fetch recent earnings (delivered orders assigned to this driver)
+  const earnings = await Order.find({ 
+    assignedDriver: driver._id,
+    deliveryStatus: 'DELIVERED'
+  }).select('id totalPrice orderDate deliveryStatus items');
+
+  res.json({ 
+    success: true, 
+    data: {
+      walletBalance: driver.walletBalance || 0,
+      totalEarnings: driver.totalEarnings || 0,
+      bankDetails: driver.bankDetails || null,
+      earningsHistory: earnings
+    } 
+  });
+}));
+
+// POST /driver/bank-details
+router.post('/bank-details', authMiddleware, driverMiddleware, asyncHandler(async (req, res) => {
+  const { accountName, accountNumber, ifscCode, bankName } = req.body;
+  if (!accountName || !accountNumber || !ifscCode || !bankName) {
+    return res.status(400).json({ success: false, message: 'All bank details are required.' });
+  }
+
+  const driver = await Driver.findOne({ userId: req.user.id });
+  if (!driver) {
+    return res.status(404).json({ success: false, message: 'Driver profile not found.' });
+  }
+
+  driver.bankDetails = { accountName, accountNumber, ifscCode, bankName };
+  await driver.save();
+
+  res.json({ success: true, message: 'Bank details saved successfully.', data: driver });
+}));
+
 module.exports = router;
