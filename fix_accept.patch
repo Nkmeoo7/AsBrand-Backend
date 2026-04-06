@@ -1,0 +1,15 @@
+--- services/driverAssignment.js
++++ services/driverAssignment.js
+@@ -137,13 +137,10 @@
+ 
+     async handleAccept(orderIdStr, driverIdStr) {
+         const assignment = this.activeAssignments.get(orderIdStr);
+-        if (!assignment) return;
+ 
+         // Clear timeout
+-        if (assignment.timerId) clearTimeout(assignment.timerId);
++        if (assignment && assignment.timerId) clearTimeout(assignment.timerId);
+ 
+         console.log(`[AssignmentEngine] Driver ${driverIdStr} accepted order ${orderIdStr}`);
+         
+         try {
