@@ -138,16 +138,22 @@ class DriverAssignmentEngine {
 
     async handleAccept(orderIdStr, driverIdStr) {
         const assignment = this.activeAssignments.get(orderIdStr);
-        if (!assignment) return;
 
-        // Clear timeout
-        if (assignment.timerId) clearTimeout(assignment.timerId);
+        // Clear timeout if exists
+        if (assignment && assignment.timerId) clearTimeout(assignment.timerId);
 
-        console.log(`[AssignmentEngine] Driver ${driverIdStr} accepted order ${orderIdStr}`);
+        console.log(`[AssignmentEngine] Driver ${driverIdStr} attempting to accept order ${orderIdStr}...`);
         
         try {
             // Get the order for ETA calculation
             const order = await Order.findById(orderIdStr);
+            if (!order) return;
+            if (order.assignedDriver && order.assignedDriver.toString() !== driverIdStr) {
+                console.log(`[AssignmentEngine] Order ${orderIdStr} was already captured by ${order.assignedDriver}`);
+                // Remove from this driver's scope
+                this.activeAssignments.delete(orderIdStr);
+                return;
+            }
             if (order && order.shippingAddress) {
                 // Find supplier pickup coords
                 const supplierId = order.items?.[0]?.supplierId;
