@@ -113,6 +113,31 @@ io.on('connection', (socket) => {
     console.log(`🚪 Socket ${socket.id} left room order_${orderId}`);
   });
 
+  socket.on('driver_online', async (data) => {
+    const { driverId, lat, lng } = data;
+    if (driverId) {
+      console.log(`[Socket] Driver ${driverId} marked online at ${lat}, ${lng}`);
+      const assignmentEngine = require('./services/driverAssignment');
+      const Order = require('./model/order');
+      try {
+        // Find any active orders that need a driver and haven't been picked up/assigned
+        const unassignedOrders = await Order.find({
+          orderStatus: { $in: ['processing', 'processed'] },
+          assignedDriver: null
+        });
+
+        if (unassignedOrders.length > 0) {
+          console.log(`[Socket] Found ${unassignedOrders.length} unassigned order(s). Trying to assign to newly online driver ${driverId}...`);
+          for (const order of unassignedOrders) {
+            assignmentEngine.startAssignment(order._id);
+          }
+        }
+      } catch (err) {
+        console.error('[Socket] Error scanning for unassigned orders:', err);
+      }
+    }
+  });
+
   socket.on('accept_order', (data) => {
     const { orderId, driverId } = data;
     if (orderId && driverId) {
