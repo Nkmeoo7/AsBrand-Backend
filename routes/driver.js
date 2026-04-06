@@ -198,6 +198,39 @@ router.get('/orders', authMiddleware, driverMiddleware, asyncHandler(async (req,
   res.json({ success: true, message: 'Orders retrieved.', data: orders });
 }));
 
+// GET /driver/orders/:id/details — full order details with supplier coordinates for navigation
+router.get('/orders/:id/details', authMiddleware, driverMiddleware, asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id).populate('userID', 'name phone');
+  if (!order) {
+    return res.status(404).json({ success: false, message: 'Order not found.' });
+  }
+
+  // Get supplier info
+  const supplierId = order.items?.[0]?.supplierId;
+  let supplierInfo = null;
+  if (supplierId) {
+    const User = require('../model/user');
+    const supplier = await User.findById(supplierId);
+    if (supplier?.supplierProfile) {
+      supplierInfo = {
+        storeName: supplier.supplierProfile.storeName,
+        address: supplier.supplierProfile.pickupAddress?.street || supplier.supplierProfile.pickupAddress?.address || '',
+        latitude: supplier.supplierProfile.pickupAddress?.latitude,
+        longitude: supplier.supplierProfile.pickupAddress?.longitude,
+        phone: supplier.phone,
+      };
+    }
+  }
+
+  res.json({
+    success: true,
+    data: {
+      order,
+      supplier: supplierInfo,
+    }
+  });
+}));
+
 // PATCH /driver/orders/:id/status
 router.patch('/orders/:id/status', authMiddleware, driverMiddleware, asyncHandler(async (req, res) => {
   const { status } = req.body;
