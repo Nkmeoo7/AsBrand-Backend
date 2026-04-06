@@ -80,9 +80,9 @@ class DriverAssignmentEngine {
             // Prepare payload
             const orderPayload = {
                 orderId: order._id.toString(),
-                pickupAddress: `${supplierShopName}, ${supplier.supplierProfile.pickupAddress.address}`,
-                dropAddress: `${order.shippingAddress.address}, ${order.shippingAddress.city}`,
-                amount: order.orderTotal,
+                pickupAddress: `${supplierShopName}, ${supplier?.supplierProfile?.pickupAddress?.street || supplier?.supplierProfile?.pickupAddress?.address || ''}`,
+                dropAddress: `${order.shippingAddress?.street || order.shippingAddress?.address || ''}, ${order.shippingAddress?.city || ''}`,
+                amount: order.totalPrice || (order.orderTotal && order.orderTotal.total) || 0,
                 products: productNames
             };
 
@@ -126,11 +126,11 @@ class DriverAssignmentEngine {
             this.io.emit(`new_order_${nextDriver.driver._id.toString()}`, payloadWithDistance);
         }
 
-        // Set 10 second timeout to cascade to next driver
+        // Set 30 second timeout to cascade to next driver
         const timerId = setTimeout(() => {
             console.log(`[AssignmentEngine] Driver ${nextDriver.driver._id} timed out for order ${orderIdStr}`);
             this.handleReject(orderIdStr, nextDriver.driver._id.toString());
-        }, 11000); // 11 seconds to be safe
+        }, 31000); // 31 seconds to be safe
 
         assignment.timerId = timerId;
         this.activeAssignments.set(orderIdStr, assignment);
