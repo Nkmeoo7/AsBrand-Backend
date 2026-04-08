@@ -47,6 +47,10 @@ const orderSchema = new mongoose.Schema({
       variant: {
         type: String,
       },
+      packagingCharge: {
+        type: Number,
+        default: 0
+      }
     }
   ],
   totalPrice: {
@@ -100,6 +104,7 @@ const orderSchema = new mongoose.Schema({
     discount: Number,
     shippingCharge: Number,
     handlingCharge: Number,
+    packagingCharge: Number,
     total: Number
   },
   trackingUrl: {

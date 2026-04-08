@@ -38,6 +38,7 @@ const initiateOrder = async (req, res) => {
                 quantity: item.quantity,
                 price: item.price,
                 variant: item.variant,
+                packagingCharge: item.packagingCharge || 0,
             };
             if (item.supplierId) clean.supplierId = item.supplierId;
             return clean;
@@ -45,8 +46,10 @@ const initiateOrder = async (req, res) => {
 
         // Calculate total on server (never trust client)
         let subtotal = 0;
+        let totalPackagingCharge = 0;
         for (const item of items) {
             subtotal += item.price * item.quantity;
+            totalPackagingCharge += item.packagingCharge * item.quantity;
         }
 
         // Apply discount if coupon exists (TODO: validate coupon)
@@ -56,7 +59,7 @@ const initiateOrder = async (req, res) => {
         const settings = await Setting.findOne() || {};
         const shippingCharge = req.body.deliveryCharge ?? 0;
         const handlingCharge = settings.handlingCharge ?? 5;
-        const total = subtotal - discount + shippingCharge + handlingCharge;
+        const total = subtotal - discount + shippingCharge + handlingCharge + totalPackagingCharge;
 
         // Create order in database with status 'created'
         const order = new Order({
@@ -70,7 +73,7 @@ const initiateOrder = async (req, res) => {
             paymentStatus: 'created',
             shippingCharge,
             handlingCharge,
-            orderTotal: { subtotal, discount, shippingCharge, handlingCharge, total }
+            orderTotal: { subtotal, discount, shippingCharge, handlingCharge, packagingCharge: totalPackagingCharge, total }
         });
         await order.save();
 
@@ -229,8 +232,10 @@ const placeCodOrder = async (req, res) => {
 
         // Calculate total on server
         let subtotal = 0;
+        let totalPackagingCharge = 0;
         for (const item of items) {
             subtotal += item.price * item.quantity;
+            totalPackagingCharge += item.packagingCharge * item.quantity;
         }
         const discount = 0;
 
@@ -238,7 +243,7 @@ const placeCodOrder = async (req, res) => {
         const settings = await Setting.findOne() || {};
         const shippingCharge = req.body.deliveryCharge ?? 0;
         const handlingCharge = settings.handlingCharge ?? 5;
-        const total = subtotal - discount + shippingCharge + handlingCharge;
+        const total = subtotal - discount + shippingCharge + handlingCharge + totalPackagingCharge;
 
         const order = new Order({
             userID,
@@ -250,7 +255,7 @@ const placeCodOrder = async (req, res) => {
             orderStatus: 'processing',
             paymentStatus: 'pending', // Payment on delivery
             deliveryStatus: 'PENDING',
-            orderTotal: { subtotal, discount, shippingCharge, handlingCharge, total }
+            orderTotal: { subtotal, discount, shippingCharge, handlingCharge, packagingCharge: totalPackagingCharge, total }
         });
         await order.save();
 
