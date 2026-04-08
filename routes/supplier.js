@@ -559,6 +559,56 @@ router.get('/dashboard', authMiddleware, supplierMiddleware, asyncHandler(async 
     });
 }));
 
+// GET /supplier/finance — Get detailed finance and payouts overview
+router.get('/finance', authMiddleware, supplierMiddleware, asyncHandler(async (req, res) => {
+    const supplierId = req.user.id;
+
+    // Get all orders containing this supplier's items that are delivered
+    const deliveredOrders = await Order.find({
+        'items.supplierId': supplierId,
+        orderStatus: 'delivered'
+    }).sort({ createdAt: -1 });
+
+    let totalEarnings = 0;
+    
+    // Recent transactions (last 10 delivered orders)
+    const recentTransactions = deliveredOrders.slice(0, 10).map(order => {
+        let earnedFromOrder = 0;
+        order.items.forEach(item => {
+            if (item.supplierId && item.supplierId.toString() === supplierId) {
+                earnedFromOrder += (item.price || 0) * (item.quantity || 1);
+            }
+        });
+        
+        totalEarnings += earnedFromOrder;
+
+        return {
+            orderId: order._id,
+            date: order.createdAt,
+            amount: earnedFromOrder,
+            status: 'completed'
+        };
+    });
+    
+    // Calculate total earnings from all other older orders
+    deliveredOrders.slice(10).forEach(order => {
+        order.items.forEach(item => {
+            if (item.supplierId && item.supplierId.toString() === supplierId) {
+                totalEarnings += (item.price || 0) * (item.quantity || 1);
+            }
+        });
+    });
+
+    res.json({
+        success: true,
+        data: {
+            totalEarnings: Math.round(totalEarnings),
+            pendingPayouts: Math.round(totalEarnings), // Mocked for now
+            recentTransactions
+        }
+    });
+}));
+
 // ============================================================
 // SUPPLIER PRODUCTS
 // ============================================================
