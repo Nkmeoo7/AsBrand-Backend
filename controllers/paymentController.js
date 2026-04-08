@@ -225,6 +225,7 @@ const placeCodOrder = async (req, res) => {
                 quantity: item.quantity,
                 price: item.price,
                 variant: item.variant,
+                packagingCharge: item.packagingCharge || 0,
             };
             if (item.supplierId) clean.supplierId = item.supplierId;
             return clean;
