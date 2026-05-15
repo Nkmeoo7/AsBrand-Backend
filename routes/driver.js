@@ -337,6 +337,14 @@ router.patch('/orders/:id/status', authMiddleware, driverMiddleware, asyncHandle
     return res.status(404).json({ success: false, message: 'Order not found.' });
   }
 
+  // Gate: Driver can reach pickup location during preparing or ready
+  if (status === 'REACHED_PICKUP' && !['preparing', 'ready'].includes(order.orderStatus)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Order is not being prepared yet. Please wait for the supplier to accept the order.'
+    });
+  }
+
   // Gate: Driver cannot pick up until supplier marks food as ready
   if (status === 'PICKED_UP' && order.orderStatus !== 'ready') {
     return res.status(400).json({
